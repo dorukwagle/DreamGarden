@@ -6,6 +6,9 @@ import errorHandler from "./middlewares/errorHandler";
 import routesLogger from "./utils/routesLogger";
 import "./utils/bigintSerializer"
 import prod from "./startup/production";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 

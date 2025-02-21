@@ -5,7 +5,6 @@ datasource db {
 
 generator client {
     provider        = "prisma-client-js"
-    previewFeatures = ["fullTextSearch", "fullTextIndex", "omitApi"]
 }
 
 enum EStatus {
@@ -13,30 +12,87 @@ enum EStatus {
     Completed
 }
 
+enum Prompt {
+    Food
+    Health
+    Toxic
+}
+
+enum PlantType {
+    Good
+    Bad
+}
+
+enum Plant {
+    G1
+    G2
+    G3
+    G4
+    G5
+    G6
+    B1
+    B2
+    B3
+    B4
+    B5
+    B6
+}
+
+
 model Users {
     userId    String    @id @default(cuid())
     fullName  String
     username     String    @unique
     password  String
+    profileComplete Boolean @default(false)
     createdAt DateTime  @default(now())
     updatedAt DateTime  @updatedAt
     deletedAt DateTime?
     sessions Sessions[]
-    todos Samples[]
+    userPlants UserPlants[]
+    status StatusTracks?
+    promptHistory PromptHistory?
+
 }
 
-model Samples {
-    sampleId String @id @default(cuid())
-    title String
-    body String?
+model UserPlants {
+    plantId String @id @default(cuid())
+    plant Plant
+    plantType PlantType
+    prompt Prompt
+    health Int 
+    age Int
     userId String
-    status EStatus @default(Pending)
     user Users @relation(fields: [userId], references: [userId])
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
     deletedAt DateTime?
+}
 
-    @@fulltext([title, body])
+model StatusTracks {
+    statusId String @id @default(cuid())
+    healthImproveCount Int
+    foodImproveCount Int
+    toxicImproveCount Int
+    userId String @unique
+    user Users @relation(fields: [userId], references: [userId])
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    deletedAt DateTime?
+}
+
+model PromptHistory {
+    historyId String @id @default(cuid())
+    healthPrompt String
+    foodPrompt String
+    toxicPrompt String
+    isInitial Boolean @default(true)
+    lastPromptDate DateTime @default(now())
+    userId String @unique
+    user Users @relation(fields: [userId], references: [userId])
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    deletedAt DateTime?
 }
 
 model Sessions {
