@@ -23,7 +23,10 @@ const getSession = async(req: Request) => {
 
 const authorize = async (req: SessionRequest, res: Response, next: NextFunction) => {
    const session = await getSession(req);
-    if (!session) return res.status(401).json({error: "please login first"});
+    if (!session) {
+        res.status(401).json({error: "please login first"});
+        return;
+    }
 
     req.session = session;
     next();
