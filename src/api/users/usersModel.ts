@@ -1,4 +1,5 @@
 import ModelReturnTypes from "../../entities/ModelReturnTypes";
+import { unique } from "../../utils/dbValidation";
 import formatValidationErrors from "../../utils/formatValidationErrors";
 import { hashPassword } from "../../utils/hash";
 import prismaClient from "../../utils/prismaClient";
@@ -10,6 +11,12 @@ const registerUser = async (body: UserType) => {
     const validation = User.safeParse(body);
     const error = formatValidationErrors(validation);
     if (error) return error;
+
+    const isUnique = unique("Users", "username", validation.data!.username);
+    if (!isUnique) {
+        res.error = {error: "Username already exists"};
+        return res;
+    }
 
     const data = validation.data!;
     data.password = await hashPassword(data.password);

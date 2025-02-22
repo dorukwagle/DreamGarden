@@ -23,6 +23,12 @@ enum PlantType {
     Bad
 }
 
+enum Status {
+    progress
+    degrade
+    constant
+}
+
 enum Plant {
     G1
     G2
@@ -50,9 +56,9 @@ model Users {
     deletedAt DateTime?
     sessions Sessions[]
     userPlants UserPlants[]
-    status StatusTracks?
+    status StatusTracks[]
     promptHistory PromptHistory?
-
+    streak ProgressStreak?
 }
 
 model UserPlants {
@@ -71,9 +77,20 @@ model UserPlants {
 
 model StatusTracks {
     statusId String @id @default(cuid())
-    healthImproveCount Int
-    foodImproveCount Int
-    toxicImproveCount Int
+    prompt Prompt
+    status Status
+    userId String
+    user Users @relation(fields: [userId], references: [userId])
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    deletedAt DateTime?
+}
+
+model ProgressStreak {
+    streakId String @id @default(cuid())
+    healthStreak Int @default(0)
+    foodStreak Int @default(0)
+    toxicStreak Int @default(0)
     userId String @unique
     user Users @relation(fields: [userId], references: [userId])
     createdAt DateTime  @default(now())
