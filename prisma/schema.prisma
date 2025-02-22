@@ -100,9 +100,12 @@ model ProgressStreak {
 
 model PromptHistory {
     historyId String @id @default(cuid())
-    healthPrompt String
-    foodPrompt String
-    toxicPrompt String
+    initialHealthPrompt String @db.Text
+    initialFoodPrompt String @db.Text
+    initialToxicPrompt String @db.Text
+    healthPrompt String @db.Text
+    foodPrompt String @db.Text
+    toxicPrompt String @db.Text
     isInitial Boolean @default(true)
     lastPromptDate DateTime @default(now())
     userId String @unique

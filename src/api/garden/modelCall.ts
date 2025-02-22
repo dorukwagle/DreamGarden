@@ -159,17 +159,21 @@ const calculateProgress = async (
     parameters: {
       type: "object",
       properties: {
-        foodPrompt: { type: "string", enum: ["progress", "degrade", "constant"] },
+        foodPrompt: { type: "string", enum: ["progress", "degrade"] },
         healthPrompt: { type: "string", enum: ["progress", "degrade", "constant"] },
-        toxicPrompt: { type: "string", enum: ["progress", "degrade", "constant"] }
+        toxicPrompt: { type: "string", enum: ["progress", "degrade"] }
       },
       required: ["foodPrompt", "healthPrompt", "toxicPrompt"]
     }
   };
 
-  const input = `
-    Compare the user's daily habits and determine if they are progressing, degrading, or remaining constant.
+  // **Initial Prompt** ( This is the initial prompt that the user provided during sign up)
+  //   - initialFoodPrompt: ${JSON.stringify(previousPrompt.initialFoodPrompt)}
+  //   - initialHealthPrompt: ${JSON.stringify(previousPrompt.initialHealthPrompt)}
+  //   - initialToxicPrompt: ${JSON.stringify(previousPrompt.initialToxicPrompt)}
 
+  const input = `
+    Compare the user's daily habits and determine if they are progressing, degrading, or (healthPrompt can be  constant too).
     **Previous Prompt:**
     - foodPrompt: ${JSON.stringify(previousPrompt.foodPrompt)}
     - healthPrompt: ${JSON.stringify(previousPrompt.healthPrompt)}
@@ -186,18 +190,19 @@ const calculateProgress = async (
     - If unhealthy food is removed → "progress"
     - If food consumption is healthier than before → "progress"
     - If food consumption is worse than before → "degrade"
-    - If food remains the same → "constant"
     - If junk food increases → "degrade"
     - If a health issue improves → "progress"
     - If new health issues arise → "degrade"
     - If toxic consumption decreases → "progress"
     - If toxic consumption increases → "degrade"
 
+    **Consider the prompts or habits of user throughout the lifecycle of app use i.e. from initial prompt to previous and current prompt then decide the progress | constant | degrade**
+
    **IMPORTANT:** You MUST return ONLY a function call using track_habit_progress with the exact JSON format below:
 {
-  "foodPrompt": "progress" | "degrade" | "constant",
+  "foodPrompt": "progress" | "degrade",
   "healthPrompt": "progress" | "degrade" | "constant",
-  "toxicPrompt": "progress" | "degrade" | "constant"
+  "toxicPrompt": "progress" | "degrade"
 }
 Do not include any additional text.
     `;

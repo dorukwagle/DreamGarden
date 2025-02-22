@@ -39,6 +39,9 @@ const progressGoodGarden = async (
             userId,
             prompt,
             plantType: "Good",
+            health: {
+                lt: 10,
+            }
         },
         data: {
             health: {
@@ -46,6 +49,8 @@ const progressGoodGarden = async (
             },
         },
     });
+
+    console.log("progressing good garden", prompt);
 
     // update history
     if (!prompt) {
@@ -90,13 +95,18 @@ const progressBadGarden = async (
             userId,
             prompt,
             plantType: "Bad",
+            health: {
+                lt: 10,
+            }
         },
         data: {
             health: {
-                decrement: 1,
+                increment: 1,
             },
         },
     });
+
+    console.log("progressing bad garden", prompt);
 
     // update history
     if (!prompt) {
@@ -141,6 +151,9 @@ const degradeGoodGarden = async (
             userId,
             prompt,
             plantType: "Good",
+            health: {
+                gt: 0,
+            }
         },
         data: {
             health: {
@@ -148,6 +161,8 @@ const degradeGoodGarden = async (
             },
         },
     });
+
+    console.log("degrading good garden", prompt);
 
     // update history
     if (!prompt) {
@@ -192,6 +207,9 @@ const degradeBadGarden = async (
             userId,
             prompt,
             plantType: "Bad",
+            health: {
+                gt: 0,
+            }
         },
         data: {
             health: {
@@ -199,6 +217,8 @@ const degradeBadGarden = async (
             },
         },
     });
+
+    console.log("degrading bad garden", prompt);
 
     // update history
     if (!prompt) {
@@ -242,6 +262,9 @@ const growGoodGarden = async (userId: string) => {
             health: {
                 gt: 5,
             },
+            age: {
+                lt: 10,
+            }
         },
         data: {
             age: {
@@ -259,6 +282,9 @@ const growBadGarden = async (userId: string) => {
             health: {
                 gt: 5,
             },
+            age: {
+                lt: 10,
+            }
         },
         data: {
             age: {
@@ -366,6 +392,9 @@ const initiateGarden = async (userId: string, body: InitialPromptType) => {
             healthPrompt: JSON.stringify(data.healthPrompt),
             foodPrompt: JSON.stringify(data.regular),
             toxicPrompt: JSON.stringify(data.toxicPrompt),
+            initialFoodPrompt: JSON.stringify(data.regular),
+            initialHealthPrompt: JSON.stringify(data.healthPrompt),
+            initialToxicPrompt: JSON.stringify(data.toxicPrompt),
         },
     });
 
@@ -403,20 +432,24 @@ const updateGarden = async (userId: string, body: PromptType) => {
 
     const updatePrompt = await calculateProgress(
         {
+            initialFoodPrompt: JSON.parse(previousPrompt.initialFoodPrompt),
+            initialHealthPrompt: JSON.parse(previousPrompt.initialHealthPrompt),
+            initialToxicPrompt: JSON.parse(previousPrompt.initialToxicPrompt),
             foodPrompt: JSON.parse(previousPrompt.foodPrompt),
-            healthPrompt: JSON.parse(previousPrompt.healthPrompt),
+            healthPrompt: data.healthPrompt[0] == "same" ? previousPrompt.healthPrompt : JSON.parse(previousPrompt.healthPrompt),
             toxicPrompt: JSON.parse(previousPrompt.toxicPrompt),
         },
         data
     );
-
-    console.log(updatePrompt);
+    console.log("data", data);
+    console.log("response", updatePrompt);
     
     const streak = await updateStreak(userId, updatePrompt);
+    console.log("streak", streak);
     await progressGarden(userId, streak as ProgressStreak);
 
     // degrade health of plants if not progressed over time
-    await degradeGardens(userId);
+    // await degradeGardens(userId);
 
     await growGoodGarden(userId);
     await growBadGarden(userId);
@@ -429,9 +462,9 @@ const updateGarden = async (userId: string, body: PromptType) => {
             userId,
         },
         data: {
-            foodPrompt: JSON.stringify(updatePrompt.foodPrompt),
-            healthPrompt: JSON.stringify(updatePrompt.healthPrompt),
-            toxicPrompt: JSON.stringify(updatePrompt.toxicPrompt),
+            foodPrompt: JSON.stringify(data.foodPrompt),
+            healthPrompt: data.healthPrompt[0] == "same" ? previousPrompt.healthPrompt : JSON.stringify(data.healthPrompt),
+            toxicPrompt: JSON.stringify(data.toxicPrompt),
         },
     });
 
@@ -439,22 +472,33 @@ const updateGarden = async (userId: string, body: PromptType) => {
 };
 
 const transformGarden = async (userId: string) => {
-    await prismaClient.userPlants.updateMany({
+    const degraded = await prismaClient.userPlants.findMany({
         where: {
             userId,
             plantType: "Good",
             health: {
                 lt: 1,
             },
-        },
-        data: {
-            plantType: "Bad",
-            health: 6,
-            age: 1
         },
     });
 
-    await prismaClient.userPlants.updateMany({
+    degraded.forEach(async (plant) => {
+        await prismaClient.userPlants.update({
+            where: {
+                plantId: plant.plantId,
+            },
+            data: {
+                plantType: "Bad",
+                plant: getRandomPlant("Bad"),
+                health: 6,
+                age: 1
+            },
+        });
+
+        console.log("transform to bad ", plant);
+    });
+
+    const grew = await prismaClient.userPlants.findMany({
         where: {
             userId,
             plantType: "Bad",
@@ -462,42 +506,60 @@ const transformGarden = async (userId: string) => {
                 lt: 1,
             },
         },
-        data: {
-            plantType: "Good",
-            health: 6,
-            age: 1
-        },
+    });
+
+    grew.forEach(async (plant) => {
+        console.log("transform to good ", plant);
+        await prismaClient.userPlants.update({
+            where: {
+                plantId: plant.plantId,
+            },
+            data: {
+                plantType: "Good",
+                plant: getRandomPlant("Good"),
+                health: 6,
+                age: 1
+            },
+        });
     });
 }
 
 const progressGarden = async (userId: string, streak: ProgressStreak) => {
-    if (streak.foodStreak >= 2) {
+    const threshold = 2;
+
+    if (streak.foodStreak >= threshold) {
         await progressGoodGarden(userId, "Food");
+        await degradeBadGarden(userId, "Food");
         await resetStreak(userId, "foodStreak");
     }
 
-    if (streak.healthStreak >= 2) {
+    if (streak.healthStreak >= threshold) {
         await progressGoodGarden(userId, "Health");
+        await degradeBadGarden(userId, "Health");
         await resetStreak(userId, "healthStreak");
     }
 
-    if (streak.toxicStreak >= 2) {
+    if (streak.toxicStreak >= threshold) {
         await progressGoodGarden(userId, "Toxic");
+        await degradeBadGarden(userId, "Toxic");
         await resetStreak(userId, "toxicStreak");
     }
 
-    if (streak.foodStreak <= -2) {
+    if (streak.foodStreak <= -threshold) {
         await progressBadGarden(userId, "Food");
+        await degradeGoodGarden(userId, "Food");
         await resetStreak(userId, "foodStreak");
     }
 
-    if (streak.healthStreak <= -2) {
+    if (streak.healthStreak <= -threshold) {
         await progressBadGarden(userId, "Health");
+        await degradeGoodGarden(userId, "Health");
         await resetStreak(userId, "healthStreak");
     }
 
-    if (streak.toxicStreak <= -2) {
+    if (streak.toxicStreak <= -threshold) {
         await progressBadGarden(userId, "Toxic");
+        await degradeGoodGarden(userId, "Toxic");
         await resetStreak(userId, "toxicStreak");
     }
 }
@@ -511,7 +573,7 @@ const degradeGardens = async (userId: string) => {
         orderBy: {
             createdAt: "desc",
         },
-        take: 3,
+        take: 2,
     });
 
     const food = await prismaClient.statusTracks.findMany({
@@ -522,7 +584,7 @@ const degradeGardens = async (userId: string) => {
         orderBy: {
             createdAt: "desc",
         },
-        take: 3,
+        take: 2,
     });
 
     const toxic = await prismaClient.statusTracks.findMany({
@@ -533,7 +595,7 @@ const degradeGardens = async (userId: string) => {
         orderBy: {
             createdAt: "desc",
         },
-        take: 3,
+        take: 2,
     });
 
     const toxicImproved = !toxic.filter((track) => track.status == "degrade").length;
@@ -569,15 +631,15 @@ const updateStreak = async (userId: string, { foodPrompt, healthPrompt, toxicPro
             userId,
         },
         data: {
-            foodStreak:  foodPrompt == "progress" ? {
-                increment: 1,
-            } : 0,
-            healthStreak:  healthPrompt == "progress" ? {
-                increment: 1,
-            } : 0,
-            toxicStreak:  toxicPrompt == "progress" ? {
-                increment: 1,
-            } : 0,
+            foodStreak: foodPrompt == "constant" ? undefined :{
+                [foodPrompt  == "progress" ? "increment" : "decrement"]: 1,
+            },
+            healthStreak: healthPrompt == "constant" ? undefined :{
+                [healthPrompt  == "progress" ? "increment" : "decrement"]: 1,
+            },
+            toxicStreak: toxicPrompt == "constant" ? undefined :{
+                [toxicPrompt  == "progress" ? "increment" : "decrement"]: 1,
+            },
         },
         select: {
             foodStreak: true,

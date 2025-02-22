@@ -12,7 +12,8 @@ const registerUser = async (body: UserType) => {
     const error = formatValidationErrors(validation);
     if (error) return error;
 
-    const isUnique = unique("Users", "username", validation.data!.username);
+    const isUnique = await unique("Users", "username", validation.data!.username);
+
     if (!isUnique) {
         res.error = {error: "Username already exists"};
         return res;
